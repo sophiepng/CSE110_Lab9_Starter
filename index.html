@@ -5,7 +5,16 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lab 9</title>
+  <title>Lab 9 - JavaScript Error Handling</title>
+
+<script src="https://cdn.trackjs.com/agent/v3/latest/t.js"></script>
+<script>
+  window.TrackJS && TrackJS.install({ 
+    token: "99d85425557448098ded85998ca34a9d",
+    application: "cse110lab9"
+    // for more configuration options, see https://docs.trackjs.com
+  });
+</script>
 
   <style>
     button {
@@ -69,39 +78,304 @@
     </form>
 
     <section id="error-btns">
-      <button>Console Log</button>
-      <button>Console Error</button>
-      <button>Console Count</button>
-      <button>Console Warn</button>
-      <button>Console Assert</button>
-      <button>Console Clear</button>
-      <button>Console Dir</button>
-      <button>Console dirxml</button>
-      <button>Console Group Start</button>
-      <button>Console Group End</button>
-      <button>Console Table</button>
-      <button>Start Timer</button>
-      <button>End Timer</button>
-      <button>Console Trace</button>
-      <button>Trigger a Global Error</button>
+      <button data-action="log">Console Log</button>
+      <button data-action="error">Console Error</button>
+      <button data-action="count">Console Count</button>
+      <button data-action="warn">Console Warn</button>
+      <button data-action="assert">Console Assert</button>
+      <button data-action="clear">Console Clear</button>
+      <button data-action="dir">Console Dir</button>
+      <button data-action="dirxml">Console dirxml</button>
+      <button data-action="group-start">Console Group Start</button>
+      <button data-action="group-end">Console Group End</button>
+      <button data-action="table">Console Table</button>
+      <button data-action="start-timer">Start Timer</button>
+      <button data-action="end-timer">End Timer</button>
+      <button data-action="trace">Console Trace</button>
+      <button data-action="global-error">Trigger a Global Error</button>
     </section>
   </main>
 
   <script>
+    // Custom Error Classes
+    class ValidationError extends Error {
+      constructor(message) {
+        super(message);
+        this.name = "ValidationError";
+      }
+    }
+
+    class CalculationError extends Error {
+      constructor(message, operation) {
+        super(message);
+        this.name = "CalculationError";
+        this.operation = operation;
+      }
+    }
+
+    class NetworkError extends Error {
+      constructor(message, statusCode) {
+        super(message);
+        this.name = "NetworkError";
+        this.statusCode = statusCode;
+      }
+    }
+
+    // Global variables for demo
+    let timerStarted = false;
+    let groupLevel = 0;
+    let consoleOutput = document.getElementById('console-output');
+
+    // Global Error Handler
+    window.onerror = function(message, source, lineno, colno, error) {
+      console.log("Global Error Handler Caught:");
+      // Return true to prevent default browser error handling
+      return true;
+    };
+
+    // Alternative modern error handler
+    window.addEventListener('error', function(event) {
+      console.log("Error Event Listener:");
+      console.log("Error:", event.error);
+    });
+
+    // Unhandled Promise Rejection Handler
+    window.addEventListener('unhandledrejection', function(event) {
+      console.log("Unhandled Promise Rejection:");
+      console.log("Reason:", event.reason);
+      event.preventDefault(); // Prevent default browser behavior
+    });
+
+    // Calculator with try/catch/finally and custom errors
     let form = document.querySelector('form');
     form.addEventListener('submit', e => {
       e.preventDefault();
-      let output = document.querySelector('output');
-      let firstNum = document.querySelector('#first-num').value;
-      let secondNum = document.querySelector('#second-num').value;
-      let operator = document.querySelector('#operator').value;
-      output.innerHTML = eval(`${firstNum} ${operator} ${secondNum}`);
+      
+      try {
+        let output = document.querySelector('output');
+        let firstNum = document.querySelector('#first-num').value;
+        let secondNum = document.querySelector('#second-num').value;
+        let operator = document.querySelector('#operator').value;
+
+        // Input validation with custom errors
+        if (!firstNum || isNaN(firstNum)) {
+          throw new ValidationError("First number is required and must be a valid number");
+        }
+        
+        if (!secondNum || isNaN(secondNum)) {
+          throw new ValidationError("Second number is required and must be a valid number");
+        }
+
+        // Convert to numbers
+        firstNum = parseFloat(firstNum);
+        secondNum = parseFloat(secondNum);
+
+        // Division by zero check
+        if (operator === '/' && secondNum === 0) {
+          throw new CalculationError("Division by zero is not allowed", "division");
+        }
+
+        // Perform calculation
+        let result;
+        switch(operator) {
+          case '+':
+            result = firstNum + secondNum;
+            break;
+          case '-':
+            result = firstNum - secondNum;
+            break;
+          case '*':
+            result = firstNum * secondNum;
+            break;
+          case '/':
+            result = firstNum / secondNum;
+            break;
+          default:
+            throw new CalculationError(`Unknown operator: ${operator}`, "unknown");
+        }
+
+        // Check for invalid results
+        if (!isFinite(result)) {
+          throw new CalculationError("Calculation resulted in an invalid number", operator);
+        }
+
+        output.innerHTML = result;
+        console.log(`Calculation successful: ${firstNum} ${operator} ${secondNum} = ${result}`);
+        
+      } catch (error) {
+        let output = document.querySelector('output');
+        
+        if (error instanceof ValidationError) {
+          output.innerHTML = `Validation Error: ${error.message}`;
+          console.error("Validation Error:", error.message);
+        } else if (error instanceof CalculationError) {
+          output.innerHTML = `Calculation Error: ${error.message}`;
+          console.error("Calculation Error:", error.message, "Operation:", error.operation);
+        } else {
+          output.innerHTML = `Unexpected Error: ${error.message}`;
+          console.error("Unexpected Error:", error);
+        }
+        
+        
+      } finally {
+        console.log("Calculator operation completed (finally block executed)");
+      }
     });
 
+    // Console Method Demonstrations
     let errorBtns = Array.from(document.querySelectorAll('#error-btns > button'));
+    
+    errorBtns.forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        const action = btn.getAttribute('data-action');
+        
+        try {
+          switch(action) {
+            case 'log':
+              console.log("Console Log Demo:");
+              break;
+              
+            case 'error':
+              console.error("Console Error Demo:");
+              console.error("Error with object:", { code: 500, message: "Server Error" });
+              break;
+              
+            case 'count':
+              console.count("Button Click Counter");
+              break;
+              
+            case 'warn':
+              console.warn("Console Warn Demo:");
+              console.warn("Configuration issue:", { timeout: 0, retries: -1 });
+              break;
+              
+            case 'assert':
+              console.assert(5 > 10, "5 is not greater than 10");
+              break;
+              
+            case 'clear':
+              console.clear();
+              console.log("Console cleared and this message logged");
+              break;
+              
+            case 'dir':
+              console.dir(document.querySelector('#first-num'));
+              break;
+              
+            case 'dirxml':
+              console.dirxml(document.querySelector('form'));
+              console.dirxml(document.querySelector('#error-btns'));
+              break;
+              
+            case 'group-start':
+              groupLevel++;
+              console.group(`Group Level ${groupLevel}`);
+              break;
+              
+            case 'group-end':
+              if (groupLevel > 0) {
+                console.groupEnd();
+                if (groupLevel > 1) console.groupEnd(); // End collapsed sub-group too
+                groupLevel--;
+                console.log("group ended");
+              } else {
+                console.log("No active groups to end");
+              }
+              break;
+              
+            case 'table':
+              console.table({
+                apples: { color: 'red', count: 5 },
+                bananas: { color: 'yellow', count: 3 },
+                oranges: { color: 'orange', count: 7 }
+              });
+              break;
+              
+            case 'start-timer':
+              console.time("Demo Timer");
+              console.log(" Timer started");
+              timerStarted = true;
+              break;
+              
+            case 'end-timer':
+              if (timerStarted) {
+                console.timeEnd("Demo Timer");
+                timerStarted = false;
+              } else {
+                console.log("No timers to end - start a timer first");
+              }
+              break;
+              
+            case 'trace':
+              function demoFunction() {
+                function nestedFunction() {
+                  function deeplyNestedFunction() {
+                    console.trace("Stack trace from deeply nested function");
+                  }
+                  deeplyNestedFunction();
+                }
+                nestedFunction();
+              }
+              demoFunction();
+              break;
+              
+            case 'global-error':
+              // Trigger different types of errors
+              const errorTypes = [
+                () => {
+                  // Custom thrown error
+                  throw new NetworkError("Simulated network failure", 503);
+                },
+                () => {
+                  // Promise rejection
+                  Promise.reject(new Error("Simulated async operation failure"));
+                }
+              ];
+              
+              const randomError = errorTypes[Math.floor(Math.random() * errorTypes.length)];
+              console.log("About to trigger a global error...");
+              
+              setTimeout(() => {
+                randomError();
+              }, 100);
+              break;
+              
+            default:
+              console.log("Unknown action:", action);
+          }
+        } catch (error) {
+          console.error("Error in button handler:", error);
+        }
+      });
+    });
 
-    // Start your code here
-    // You may move this JS to another file if you wish
+    // Additional demonstration functions for more complex error handling
+    function simulateAsyncError() {
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          reject(new NetworkError("Async operation failed", 500));
+        }, 1000);
+      });
+    }
+
+    async function demonstrateAsyncErrorHandling() {
+      try {
+        console.log("Starting async operation...");
+        await simulateAsyncError();
+      } catch (error) {
+        if (error instanceof NetworkError) {
+          console.error("Network error caught:", error.message, "Status:", error.statusCode);
+        } else {
+          console.error("Unexpected async error:", error);
+        }
+      } finally {
+        console.log("Async operation completed");
+      }
+    }
+
+    // Initialize console output
+    console.log(" Lab initialized - try the various console method buttons and error scenarios");
   </script>
 </body>
 
